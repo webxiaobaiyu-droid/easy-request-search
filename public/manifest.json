@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "EasyRequestSearch",
+  "description": "在 Chrome DevTools 中按 URL、请求类型、Query 和请求体参数过滤接口请求。",
+  "version": "0.1.0",
+  "minimum_chrome_version": "120",
+  "devtools_page": "devtools.html",
+  "permissions": ["storage", "clipboardWrite"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

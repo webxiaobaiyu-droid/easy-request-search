@@ -1,0 +1,164 @@
+:root {
+  /* Follow the system until the app applies an explicit data-theme. */
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-synthesis: none;
+
+  /* Chrome DevTools design-system surfaces. */
+  --canvas: #fdfcfb;
+  --toolbar: #fdfcfb;
+  --toolbar-tinted: #e0e8f6;
+  --panel: #fdfcfb;
+  --panel-muted: #f1f4f9;
+  --panel-hover: rgb(31 31 31 / 6%);
+  --row-alternate: #f1f4f9;
+  --selected: #d3e3fd;
+
+  /* Text */
+  --ink: #1f1f1f;
+  --muted: #474747;
+  --faint: #757575;
+
+  /* Lines — hairline #e1e3e1 for chrome; grid #d3e3fd is the native table grid color */
+  --line: #e1e3e1;
+  --line-soft: #e1e3e1;
+  --line-strong: #cacdd1;
+  --grid-line: #d3e3fd;
+  --row-alternate: #f7f9fd;
+  --waterfall: #1b6ef3;
+
+  /* Chrome primary and state colors. */
+  --accent: #0b57d0;
+  --accent-bright: #1b6ef3;
+  --accent-soft: #d3e3fd;
+  --focus-ring: #0b57d0;
+
+  /* Status — native Network colors: 2xx uncolored, 3xx blue, 4xx orange, 5xx red */
+  --status-2xx: #1f1f1f;
+  --status-3xx: #0b57d0;
+  --status-4xx: #e96725;
+  --status-5xx: #d93025;
+  --success: #146c2e;
+  --success-soft: #dbf3e2;
+  --warning: #8f4e00;
+  --warning-soft: #fef6d5;
+  --danger: #b3261e;
+  --danger-soft: #fcebeb;
+
+  /* Network request colors. */
+  --method-get: #0b57d0;
+  --method-post: #146c2e;
+  --method-put: #8f4e00;
+  --method-delete: #b3261e;
+
+  /* Batch-search keyword markers (cycled by keyword index). */
+  --batch-0: #1a73e8;
+  --batch-1: #188038;
+  --batch-2: #e37400;
+  --batch-3: #9334e6;
+  --batch-4: #d93025;
+  --batch-5: #00796b;
+  --batch-6: #a86000;
+  --batch-7: #c2185b;
+
+  /* Type */
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* Native DevTools density: toolbar 27, tab strip 27, Network row 21 (measured). */
+  --toolbar-h: 27px;
+  --control-h: 24px;
+  --row-h: 21px;
+  --radius: 4px;
+  --radius-pop: 4px;
+  --shadow: 0 0 0 1px rgb(0 0 0 / 5%), 0 2px 4px rgb(0 0 0 / 20%), 0 2px 6px rgb(0 0 0 / 10%);
+}
+
+/* Dark palette is applied via data-theme; the app resolves prefers-color-scheme in JS. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #282828;
+  --toolbar: #282828;
+  --toolbar-tinted: #303945;
+  --panel: #282828;
+  --panel-muted: #2d333b;
+  --panel-hover: rgb(253 252 251 / 10%);
+  --row-alternate: #2d333b;
+  --selected: #304968;
+
+  --ink: #e3e3e3;
+  --muted: #c7c7c7;
+  --faint: #8f8f8f;
+
+  --line: #3c3c3c;
+  --line-soft: #3c3c3c;
+  --line-strong: #8e918f;
+  --grid-line: #444c56;
+  --row-alternate: #2d333b;
+  --waterfall: #7cacf8;
+
+  --accent: #a8c7fa;
+  --accent-bright: #7cacf8;
+  --accent-soft: #304968;
+  --focus-ring: #a8c7fa;
+
+  --status-2xx: #e3e3e3;
+  --status-3xx: #a8c7fa;
+  --status-4xx: #fdd663;
+  --status-5xx: #f2b8b5;
+
+  --success: #6dd58c;
+  --success-soft: #2b4633;
+  --warning: #fdd663;
+  --warning-soft: #413c26;
+  --danger: #f2b8b5;
+  --danger-soft: #4e3534;
+
+  --method-get: #a8c7fa;
+  --method-post: #6dd58c;
+  --method-put: #fdd663;
+  --method-delete: #f2b8b5;
+
+  --batch-0: #8ab4f8;
+  --batch-1: #81c995;
+  --batch-2: #fdd663;
+  --batch-3: #c58af9;
+  --batch-4: #f28b82;
+  --batch-5: #78d9ec;
+  --batch-6: #fcb75e;
+  --batch-7: #ff8bcb;
+
+  --shadow: 0 0 0 1px rgb(255 255 255 / 20%), 0 2px 4px 2px rgb(0 0 0 / 20%), 0 2px 6px 2px rgb(0 0 0 / 10%);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app { width: 100%; height: 100%; }
+
+body {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--canvas);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+button { background: transparent; }
+
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar { width: 11px; height: 11px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 6px; background: rgb(143 143 143 / 60%); background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgb(64 64 64 / 60%); background-clip: padding-box; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
