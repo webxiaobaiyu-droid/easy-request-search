@@ -3,3 +3,6 @@ dist/
 *.zip
 .DS_Store
 *.tsbuildinfo
+.vite/
+.claude/
+.npmrc
