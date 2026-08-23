@@ -231,7 +231,7 @@ const batchLegend = computed(() => {
               >+{{ rowKeywordIndexes(request).length - 2 }}</span>
             </template>
           </span>
-          <span class="status-cell" role="cell" :title="request.status < 0 ? request.statusText : ''">{{ statusLabel(request) }}</span>
+          <span class="status-cell" role="cell" :title="request.status <= 0 ? request.statusText : ''">{{ statusLabel(request) }}</span>
           <span class="type-cell" role="cell" :title="request.mimeType">
             {{ formatResourceType(request.resourceType, request.mimeType) }}
           </span>

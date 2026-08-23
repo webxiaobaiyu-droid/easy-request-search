@@ -1,8 +1,9 @@
 import type { CapturedRequest, FilterCondition, FilterField, FilterState } from '../types/network'
 import { formatResourceType } from './resource-type'
 
+/** Locale-independent lowercasing; toLocaleLowerCase breaks on Turkish "I". */
 function normalize(value: unknown): string {
-  return String(value ?? '').toLocaleLowerCase()
+  return String(value ?? '').toLowerCase()
 }
 
 function headerText(request: CapturedRequest): string {
@@ -29,10 +30,14 @@ function parameterText(request: CapturedRequest, source?: 'query' | 'body'): str
     .join('\n')
 }
 
-/** Human-readable labels per status class, searchable via `status:word`. Labels avoid substring overlaps. */
+/**
+ * Human-readable labels per status class, searchable via `status:word`.
+ * Zero and negative statuses both mean "no HTTP response" (failed/aborted/
+ * canceled): `onRequestFinished` fires only after a request completes, so a
+ * captured request is never genuinely in flight.
+ */
 function statusLabels(status: number): string[] {
-  if (status < 0) return ['failed', '失败', 'error', '错误']
-  if (status === 0) return ['running', 'pending', '进行中']
+  if (status <= 0) return ['failed', '失败', 'error', '错误', 'aborted', '取消']
   const hundred = Math.floor(status / 100) * 100
   switch (hundred) {
     case 100:
@@ -63,23 +68,27 @@ function valuesForField(request: CapturedRequest, field: FilterField): string[] 
     case 'mime':
       return [request.mimeType]
     case 'param': {
-      const text = parameterText(request)
-      return text ? [text] : []
+      // One entry per parameter, so equals/notEquals compare each entry rather
+      // than failing against the joined block of text.
+      return request.parameters.map((parameter) => `${parameter.path}=${parameter.value}`)
     }
     case 'paramKey':
       return request.parameters.flatMap((parameter) => [parameter.key, parameter.path])
     case 'paramValue':
       return request.parameters.map((parameter) => parameter.value)
     case 'query': {
-      const text = parameterText(request, 'query')
-      return text ? [text] : []
+      return request.parameters
+        .filter((parameter) => parameter.source === 'query')
+        .map((parameter) => `${parameter.path}=${parameter.value}`)
     }
     case 'body': {
-      return [parameterText(request, 'body'), request.requestBody].filter(Boolean)
+      const entries = request.parameters
+        .filter((parameter) => parameter.source === 'body')
+        .map((parameter) => `${parameter.path}=${parameter.value}`)
+      return request.requestBody ? [...entries, request.requestBody] : entries
     }
     case 'header': {
-      const text = headerText(request)
-      return text ? [text] : []
+      return request.requestHeaders.map(({ name, value }) => `${name}:${value}`)
     }
     case 'response': {
       const text = responseText(request)
@@ -100,6 +109,23 @@ function valuesForField(request: CapturedRequest, field: FilterField): string[] 
   }
 }
 
+/** Compiled patterns are cached: conditions can be evaluated thousands of times per keystroke. */
+const regexCache = new Map<string, RegExp | null>()
+
+function compileRegex(pattern: string): RegExp | null {
+  let compiled = regexCache.get(pattern)
+  if (compiled === undefined) {
+    compiled = null
+    try {
+      compiled = new RegExp(pattern, 'i')
+    } catch {
+      // Invalid patterns simply never match.
+    }
+    regexCache.set(pattern, compiled)
+  }
+  return compiled
+}
+
 function compare(value: string, target: string, operator: FilterCondition['operator']): boolean {
   const normalizedValue = normalize(value)
   const normalizedTarget = normalize(target)
@@ -114,11 +140,7 @@ function compare(value: string, target: string, operator: FilterCondition['opera
     case 'exists':
       return normalizedValue.length > 0
     case 'regex':
-      try {
-        return new RegExp(target, 'i').test(value)
-      } catch {
-        return false
-      }
+      return compileRegex(target)?.test(value) ?? false
     case 'gt':
       return Number.isFinite(numericValue) && Number.isFinite(numericTarget) && numericValue > numericTarget
     case 'gte':
@@ -136,6 +158,8 @@ function compare(value: string, target: string, operator: FilterCondition['opera
 export function matchesCondition(request: CapturedRequest, condition: FilterCondition): boolean {
   const values = valuesForField(request, condition.field)
   if (values.length === 0) return false
+  // notEquals means "no entry equals the target", so requests with zero values
+  // never satisfy it either (handled above by the empty check).
   if (condition.operator === 'notEquals') return values.every((value) => compare(value, condition.value, condition.operator))
   return values.some((value) => compare(value, condition.value, condition.operator))
 }
@@ -161,12 +185,12 @@ const searchAliases: Record<string, FilterField> = {
 const BATCH_KEYWORD_LIMIT = 100
 
 /**
- * Batch search: a pasted multi-line list (ids, URLs, …) switches the search box
- * into OR semantics — a request matches when ANY line matches. Returns null for
- * single-line input so the regular token search keeps its AND semantics.
+ * Parses a keyword list (OR semantics: a request matches when ANY keyword hits).
+ * The search box only enters batch mode for pasted multi-line lists, while the
+ * dedicated batch box treats single-line input as one keyword.
  */
-export function parseBatchKeywords(input: string): string[] | null {
-  if (!input.includes('\n')) return null
+export function parseBatchKeywords(input: string, requireNewline = false): string[] | null {
+  if (requireNewline && !input.includes('\n')) return null
   const seen = new Set<string>()
   for (const line of input.split('\n')) {
     const keyword = line.trim()
@@ -176,9 +200,19 @@ export function parseBatchKeywords(input: string): string[] | null {
   return keywords.length > 0 ? keywords : null
 }
 
-/** One lowercased haystack per request: every searchable field joined together. */
+/**
+ * One lowercased haystack per request: every searchable field joined together.
+ * Cached per request, invalidated only when a lazily-loaded response body lands
+ * (it changes what `response` contributes). WeakMap lets trimmed requests go.
+ */
+const haystackCache = new WeakMap<CapturedRequest, { body: CapturedRequest['responseBody']; hay: string }>()
+
 function requestHaystack(request: CapturedRequest): string {
-  return normalize(valuesForField(request, 'any').join('\n'))
+  const cached = haystackCache.get(request)
+  if (cached && cached.body === request.responseBody) return cached.hay
+  const hay = normalize(valuesForField(request, 'any').join('\n'))
+  haystackCache.set(request, { body: request.responseBody, hay })
+  return hay
 }
 
 /** Indices of batch keywords this request matches (used for row markers). */
@@ -190,8 +224,38 @@ export function matchBatchKeywords(request: CapturedRequest, keywords: string[])
   }, [])
 }
 
+interface SearchToken {
+  /** The alias the user typed (`status`, `key`, …) — also used for same-named parameters. */
+  alias: string
+  field: FilterField
+  value: string
+}
+
+/**
+ * A field token also matches same-named parameters, so `status:failed` finds a
+ * request whose query says `?status=failed` — Query keys can collide with the
+ * reserved aliases (status, method, type, url, …), so neither meaning wins:
+ * both are applied.
+ */
+function paramMatchesToken(request: CapturedRequest, alias: string, value: string): boolean {
+  const needle = normalize(value)
+  if (!needle) return false
+  const keys = new Set([alias, searchAliases[alias]].map((key) => key.toLowerCase()))
+  return request.parameters.some(
+    (parameter) => keys.has(parameter.key.toLowerCase()) && normalize(parameter.value).includes(needle),
+  )
+}
+
+function matchesSearchToken(request: CapturedRequest, token: SearchToken): boolean {
+  if (matchesCondition(request, { id: token.alias, field: token.field, operator: 'contains', value: token.value })) return true
+  return paramMatchesToken(request, token.alias, token.value)
+}
+
 function searchMatches(request: CapturedRequest, input: string): boolean {
-  const batchKeywords = parseBatchKeywords(input)
+  // A pasted multi-line list (ids, URLs, …) keeps OR semantics; single-line
+  // input goes through the token search below. The dedicated batch box applies
+  // separately via filter.batchSearch.
+  const batchKeywords = parseBatchKeywords(input, true)
   if (batchKeywords) {
     const haystack = requestHaystack(request)
     return batchKeywords.some((keyword) => haystack.includes(keyword.toLowerCase()))
@@ -199,7 +263,7 @@ function searchMatches(request: CapturedRequest, input: string): boolean {
 
   const rawTokens = input.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []
   const freeText: string[] = []
-  const fieldTokens: FilterCondition[] = []
+  const fieldTokens: SearchToken[] = []
 
   for (let index = 0; index < rawTokens.length; index++) {
     const raw = rawTokens[index]
@@ -211,28 +275,29 @@ function searchMatches(request: CapturedRequest, input: string): boolean {
       let value = token.slice(separator + 1).replace(/^"|"$/g, '')
       const field = searchAliases[alias]
       if (field) {
-        // `key: "tenant id"` splits into `key:` plus a quoted token; bind the pair.
-        if (!value && rawTokens[index + 1]?.startsWith('"')) {
-          value = rawTokens[++index].slice(1, -1)
+        // `key: tenant id` splits into `key:` plus the next token; bind the pair.
+        if (!value && rawTokens[index + 1]) {
+          value = rawTokens[++index].replace(/^"|"$/g, '')
         }
         if (value) {
-          fieldTokens.push({ id: `search-${index}`, field, operator: 'contains', value })
+          fieldTokens.push({ alias, field, value })
           continue
         }
       }
     }
-    // Empty alias values (`key:`) and unknown aliases deliberately fall to free text.
+    // Empty alias values (`key:` with nothing after) and unknown aliases
+    // deliberately fall to free text.
     if (token) freeText.push(token)
   }
 
-  if (fieldTokens.some((condition) => !matchesCondition(request, condition))) return false
+  if (fieldTokens.some((token) => !matchesSearchToken(request, token))) return false
   return freeText.every((term) => valuesForField(request, 'any').some((value) => normalize(value).includes(normalize(term))))
 }
 
 function matchesStatusGroup(status: number, group: string): boolean {
   if (!group || group === 'all') return true
-  if (group === 'pending') return status === 0
-  if (group === 'failed') return status < 0
+  // 0 and negative statuses are both "no HTTP response" — see statusLabels.
+  if (group === 'failed') return status <= 0
   const hundred = Number.parseInt(group, 10)
   return status >= hundred && status < hundred + 100
 }

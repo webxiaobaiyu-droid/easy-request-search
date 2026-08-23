@@ -52,8 +52,7 @@ export function requestName(request: CapturedRequest): string {
 }
 
 export function statusClass(status: number): string {
-  if (status < 0) return 'status-failed'
-  if (status === 0) return 'status-pending'
+  if (status <= 0) return 'status-failed'
   if (status >= 500) return 'status-server-error'
   if (status >= 400) return 'status-client-error'
   if (status >= 300) return 'status-redirect'
@@ -63,8 +62,14 @@ export function statusClass(status: number): string {
 
 /** Cell text for the list: failed requests have no numeric status to show. */
 export function statusLabel(request: CapturedRequest): string {
-  if (request.status < 0) return t('statusFailedShort')
-  return request.status ? String(request.status) : '···'
+  if (request.status <= 0) return t('statusFailedShort')
+  return String(request.status)
+}
+
+/** Detail text: numeric status plus reason, or the failure reason alone. */
+export function statusDetail(request: CapturedRequest): string {
+  if (request.status > 0) return request.statusText ? `${request.status} ${request.statusText}` : String(request.status)
+  return request.statusText || t('statusFailedShort')
 }
 
 export function methodClass(method: string): string {

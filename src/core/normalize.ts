@@ -21,9 +21,17 @@ interface HarEntryLike {
     headers?: HarHeader[]
     content?: { mimeType?: string; size?: number }
     bodySize?: number
+    _error?: string
   }
   type?: string
   _resourceType?: string
+  /** Chrome's HAR puts the net::ERR_* reason here when a request failed at the network layer. */
+  _error?: string
+}
+
+/** Failure reason for requests with no HTTP status; `statusText` is usually empty there. */
+function failureReason(entry: HarEntryLike): string {
+  return typeof entry._error === 'string' ? entry._error : typeof entry.response._error === 'string' ? entry.response._error : ''
 }
 
 function headerValue(headers: HeaderEntry[], name: string): string {
@@ -67,7 +75,7 @@ export function normalizeHarEntry(entry: HarEntryLike, sequence: number): Captur
     host,
     pathname,
     status: entry.response.status ?? 0,
-    statusText: entry.response.statusText ?? '',
+    statusText: entry.response.statusText || failureReason(entry),
     resourceType: (entry.type || entry._resourceType || inferResourceType(entry.response.content?.mimeType || '')).toLowerCase(),
     mimeType: entry.response.content?.mimeType || headerValue(responseHeaders, 'content-type'),
     duration: Math.max(0, entry.time ?? 0),

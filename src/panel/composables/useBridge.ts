@@ -67,10 +67,18 @@ export function useBridge(requests: Ref<CapturedRequest[]>, onCleared: () => voi
       }
     }
     // The DevTools page injects the bridge in panel.onShown, which may run after
-    // this module evaluated (the bridge-ready event can be missed). Poll briefly.
+    // this module evaluated (the bridge-ready event can be missed). Poll briefly;
+    // a bridge injected later still fires the event, which connect() also handles.
     if (!bridge && retryTimer === undefined) {
+      let attempts = 0
       retryTimer = window.setInterval(() => {
-        if (connect()) window.clearInterval(retryTimer)
+        if (connect()) {
+          window.clearInterval(retryTimer)
+          retryTimer = undefined
+        } else if (++attempts >= 50) {
+          window.clearInterval(retryTimer)
+          retryTimer = undefined
+        }
       }, 100)
     }
     return Boolean(bridge)

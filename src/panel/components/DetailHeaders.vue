@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { CapturedRequest } from '../../types/network'
+import { t } from '../i18n'
+import { statusDetail } from '../utils/format'
 import HighlightText from './HighlightText.vue'
 
 defineProps<{ request: CapturedRequest; keywords?: string[] }>()
@@ -8,17 +10,17 @@ defineProps<{ request: CapturedRequest; keywords?: string[] }>()
 <template>
   <div class="headers-view">
     <section class="data-section">
-      <div class="section-heading"><h3>General</h3></div>
+      <div class="section-heading"><h3>{{ t('headersGeneral') }}</h3></div>
       <div class="header-table">
         <div class="header-row"><code>Request URL</code><span><HighlightText :text="request.url" :keywords="keywords" /></span></div>
         <div class="header-row"><code>Request Method</code><span>{{ request.method }}</span></div>
-        <div class="header-row"><code>Status Code</code><span>{{ request.status || 'Pending' }}{{ request.statusText ? ` ${request.statusText}` : '' }}</span></div>
+        <div class="header-row"><code>Status Code</code><span>{{ statusDetail(request) }}</span></div>
         <div v-if="request.mimeType" class="header-row"><code>MIME Type</code><span>{{ request.mimeType }}</span></div>
       </div>
     </section>
 
     <section class="data-section">
-      <div class="section-heading"><h3>Request Headers</h3><span>{{ request.requestHeaders.length }}</span></div>
+      <div class="section-heading"><h3>{{ t('headersRequest') }}</h3><span>{{ request.requestHeaders.length }}</span></div>
       <div class="header-table">
         <div v-for="header in request.requestHeaders" :key="header.name" class="header-row">
           <code>{{ header.name }}</code><span><HighlightText :text="header.value" :keywords="keywords" /></span>
@@ -27,7 +29,7 @@ defineProps<{ request: CapturedRequest; keywords?: string[] }>()
     </section>
 
     <section class="data-section">
-      <div class="section-heading"><h3>Response Headers</h3><span>{{ request.responseHeaders.length }}</span></div>
+      <div class="section-heading"><h3>{{ t('headersResponse') }}</h3><span>{{ request.responseHeaders.length }}</span></div>
       <div class="header-table">
         <div v-for="header in request.responseHeaders" :key="header.name" class="header-row">
           <code>{{ header.name }}</code><span><HighlightText :text="header.value" :keywords="keywords" /></span>

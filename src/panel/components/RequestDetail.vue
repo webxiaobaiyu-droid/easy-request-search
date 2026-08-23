@@ -5,7 +5,7 @@ import { requestToCurl, requestToFetch, requestToNodeAxios } from '../../core/cu
 import type { CapturedRequest } from '../../types/network'
 import { detailTabs, type DetailTab } from '../constants'
 import { t } from '../i18n'
-import { methodClass, prettyText, responseText, statusClass } from '../utils/format'
+import { methodClass, prettyText, responseText, statusClass, statusDetail } from '../utils/format'
 import DetailCodeView from './DetailCodeView.vue'
 import DetailHeaders from './DetailHeaders.vue'
 import DetailOverview from './DetailOverview.vue'
@@ -91,8 +91,8 @@ onBeforeUnmount(() => window.clearTimeout(copyTimer))
       <header class="inspector-header">
         <div class="request-identity">
           <span class="method-pill" :class="methodClass(request.method)">{{ request.method }}</span>
-          <span class="status-pill" :class="statusClass(request.status)" :title="request.status < 0 ? request.statusText : ''">
-            {{ request.status < 0 ? request.statusText || t('statusFailedShort') : request.status || t('pending') }}
+          <span class="status-pill" :class="statusClass(request.status)" :title="request.status <= 0 ? request.statusText : ''">
+            {{ statusDetail(request) }}
           </span>
           <strong :title="request.url">{{ request.pathname }}</strong>
           <small>{{ request.host }}</small>
@@ -129,7 +129,7 @@ onBeforeUnmount(() => window.clearTimeout(copyTimer))
       </header>
     </div>
 
-    <nav class="detail-tabs" aria-label="详情视图">
+    <nav class="detail-tabs" :aria-label="t('detailNavAria')">
       <button
         v-for="tab in detailTabs"
         :key="tab.value"

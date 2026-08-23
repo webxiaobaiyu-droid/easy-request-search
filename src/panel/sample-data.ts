@@ -53,7 +53,9 @@ function sample(
         statusText:
           options.status < 0
             ? 'net::ERR_CONNECTION_REFUSED'
-            : STATUS_TEXT[options.status] ?? (options.status >= 400 ? 'Request failed' : 'OK'),
+            : options.status === 0
+              ? 'net::ERR_ABORTED'
+              : STATUS_TEXT[options.status] ?? (options.status >= 400 ? 'Request failed' : 'OK'),
         headers: [
           { name: 'content-type', value: options.mime || 'application/json; charset=utf-8' },
           { name: 'x-request-id', value: `req_demo_${sequence}` },
@@ -248,6 +250,16 @@ export function createSampleRequests(): CapturedRequest[] {
       status: -1,
       type: 'xhr',
       duration: 42,
+      size: 0,
+      responseBody: { content: '', encoding: '' },
+    }),
+    sample(17, {
+      offset: 5,
+      method: 'POST',
+      url: 'https://cdn.acme.test/upload?chunk=3&resume_token=abc123',
+      status: 0,
+      type: 'xhr',
+      duration: 1200,
       size: 0,
       responseBody: { content: '', encoding: '' },
     }),

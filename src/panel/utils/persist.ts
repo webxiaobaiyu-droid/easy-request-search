@@ -49,12 +49,14 @@ export function sanitizeFilterState(value: unknown): FilterState | null {
       .filter((condition) => (condition.field as string) in FIELD_ALLOWLIST)
   }
 
+  const rawGroup = str(raw.statusGroup)
+  // 'pending' was merged into 'failed': a captured request is never in flight.
   return {
     search: str(raw.search),
     batchSearch: str(raw.batchSearch),
     methods: strList(raw.methods),
     resourceTypes: strList(raw.resourceTypes),
-    statusGroup: str(raw.statusGroup) || 'all',
+    statusGroup: rawGroup === 'pending' ? 'failed' : STATUS_GROUPS.has(rawGroup) ? rawGroup : 'all',
     conditions,
     conditionMode: raw.conditionMode === 'any' ? 'any' : 'all',
   }
@@ -75,6 +77,8 @@ const FIELD_ALLOWLIST: Record<string, string> = {
   header: 'header',
   response: 'response',
 }
+
+const STATUS_GROUPS = new Set(['all', 'failed', '200', '300', '400', '500'])
 
 export function loadFilterState(): FilterState | null {
   return sanitizeFilterState(readStorage(FILTER_KEY))

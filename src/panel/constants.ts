@@ -9,7 +9,6 @@ export const defaultTypeOptions = ['fetch', 'xhr', 'document', 'script', 'styles
 
 export const statusOptions: { value: string; label: TranslationKey }[] = [
   { value: 'all', label: 'statusAll' },
-  { value: 'pending', label: 'statusPending' },
   { value: 'failed', label: 'statusFailed' },
   { value: '200', label: 'status2xx' },
   { value: '300', label: 'status3xx' },

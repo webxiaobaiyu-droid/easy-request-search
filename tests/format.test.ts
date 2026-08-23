@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   formatClock,
   formatDuration,
@@ -8,7 +8,36 @@ import {
   statusClass,
 } from '../src/panel/utils/format'
 import { redactedHeaders, buildExportPayload } from '../src/panel/utils/export'
+import { setLocale } from '../src/panel/i18n'
 import type { CapturedRequest, HeaderEntry } from '../src/types/network'
+
+function fullRequest(overrides: Partial<CapturedRequest> = {}): CapturedRequest {
+  return {
+    id: 'r1',
+    sequence: 1,
+    startedAt: '2026-08-21T10:00:00.000Z',
+    timestamp: 0,
+    method: 'POST',
+    url: 'https://api.test/orders?page=2',
+    displayUrl: '/orders?page=2',
+    host: 'api.test',
+    pathname: '/orders',
+    status: 200,
+    statusText: 'OK',
+    resourceType: 'fetch',
+    mimeType: 'application/json',
+    duration: 10,
+    size: 10,
+    requestHeaders: [],
+    responseHeaders: [],
+    requestBody: '',
+    requestBodyMime: '',
+    parameters: [],
+    queryParameters: [],
+    bodyParameters: [],
+    ...overrides,
+  }
+}
 
 describe('formatDuration', () => {
   it('formats milliseconds and seconds at boundaries', () => {
@@ -39,7 +68,7 @@ describe('formatClock', () => {
 
 describe('statusClass', () => {
   it('classifies status boundaries', () => {
-    expect(statusClass(0)).toBe('status-pending')
+    expect(statusClass(0)).toBe('status-failed')
     expect(statusClass(199)).toBe('status-neutral')
     expect(statusClass(200)).toBe('status-success')
     expect(statusClass(299)).toBe('status-success')
@@ -89,7 +118,10 @@ describe('export redaction', () => {
   })
 
   it('redacts both header sides of an exported request', () => {
-    const request = { requestHeaders: headers, responseHeaders: [{ name: 'Set-Cookie', value: 'sid=1' }] } as CapturedRequest
+    const request = fullRequest({
+      requestHeaders: headers,
+      responseHeaders: [{ name: 'Set-Cookie', value: 'sid=1' }],
+    })
     const [exported] = buildExportPayload([request])
     expect(exported.requestHeaders[0].value).toBe('[REDACTED]')
     expect(exported.responseHeaders[0].value).toBe('[REDACTED]')
@@ -97,19 +129,36 @@ describe('export redaction', () => {
 })
 
 describe('statusClass failures', () => {
-  it('classifies negative statuses as failed', () => {
+  it('classifies zero and negative statuses as failed', () => {
     expect(statusClass(-1)).toBe('status-failed')
     expect(statusClass(-15)).toBe('status-failed')
-    expect(statusClass(0)).toBe('status-pending')
+    expect(statusClass(0)).toBe('status-failed')
   })
 })
 
 describe('statusLabel', () => {
+  beforeEach(() => setLocale('zh-CN'))
+
   it('labels failed requests and keeps numeric statuses', async () => {
     const { statusLabel } = await import('../src/panel/utils/format')
     expect(statusLabel({ status: -1 } as CapturedRequest)).toBe('失败')
+    expect(statusLabel({ status: 0 } as CapturedRequest)).toBe('失败')
     expect(statusLabel({ status: 404 } as CapturedRequest)).toBe('404')
-    expect(statusLabel({ status: 0 } as CapturedRequest)).toBe('···')
+  })
+})
+
+describe('statusDetail', () => {
+  beforeEach(() => setLocale('zh-CN'))
+
+  it('shows the status with its reason, or the failure reason alone', async () => {
+    const { statusDetail } = await import('../src/panel/utils/format')
+    expect(statusDetail({ status: 201, statusText: 'Created' } as CapturedRequest)).toBe('201 Created')
+    expect(statusDetail({ status: 200, statusText: '' } as CapturedRequest)).toBe('200')
+    expect(statusDetail({ status: -1, statusText: 'net::ERR_CONNECTION_REFUSED' } as CapturedRequest)).toBe(
+      'net::ERR_CONNECTION_REFUSED',
+    )
+    expect(statusDetail({ status: 0, statusText: '' } as CapturedRequest)).toBe('失败')
+    expect(statusDetail({ status: 0, statusText: 'net::ERR_ABORTED' } as CapturedRequest)).toBe('net::ERR_ABORTED')
   })
 })
 

@@ -133,6 +133,14 @@ const zhCN = {
   batchTextareaPlaceholder: 'ORD-1001\nORD-1002\ntrace-id-abc…',
   batchClear: '清空',
   batchActive: '批量搜索已启用：{n} 个关键词',
+  // Accessibility and section labels
+  presetSelectAria: '筛选预设',
+  presetNameAria: '预设名称',
+  batchAria: '批量搜索关键词',
+  detailNavAria: '详情视图',
+  headersGeneral: '常规',
+  headersRequest: '请求头',
+  headersResponse: '响应头',
 } as const
 
 const en: Record<TranslationKey, string> = {
@@ -256,6 +264,14 @@ const en: Record<TranslationKey, string> = {
   batchTextareaPlaceholder: 'ORD-1001\nORD-1002\ntrace-id-abc…',
   batchClear: 'Clear',
   batchActive: 'Batch search active: {n} keywords',
+  // Accessibility and section labels
+  presetSelectAria: 'Filter preset',
+  presetNameAria: 'Preset name',
+  batchAria: 'Batch search keywords',
+  detailNavAria: 'Request detail views',
+  headersGeneral: 'General',
+  headersRequest: 'Request Headers',
+  headersResponse: 'Response Headers',
 }
 
 const LOCALE_KEY = 'easy-request-search:locale'
@@ -267,7 +283,7 @@ function initialLocale(): Locale {
   } catch {
     // Storage may be unavailable in restricted DevTools contexts.
   }
-  return 'zh-CN'
+  return typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 }
 
 export const locale = ref<Locale>(initialLocale())

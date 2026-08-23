@@ -12,14 +12,14 @@ Chrome 原生 Network 面板擅长查看请求详情，但很难直接表达“�
 - 按 `fetch`、`xhr`、`document`、`script`、`image` 等资源类型筛选。
 - 按 `2xx`、`3xx`、`4xx`、`5xx` 状态码分组筛选。
 - 搜索 URL、请求参数、MIME 类型和请求头。
-- 搜索框支持 `method:POST`、`type:fetch`、`status:4`、`key:tenantId`、`value:3107` 等快捷语法。
+- 搜索框支持 `method:POST`、`type:fetch`、`status:4`、`key:tenantId`、`value:3107` 等快捷语法（冒号后可有空格）；字段名同时匹配同名参数，例如 `status:failed` 也能命中 `?status=failed` 的请求。
 - 精确筛选 Query 参数、请求体参数名、嵌套路径和参数值。
 - 多个高级条件支持 `AND`（全部条件）或 `OR`（任一条件）。
 - 支持包含、等于、不等于、存在、正则和数字比较。
 - 解析 JSON、URL Encoded、Multipart Form Data 和纯文本请求体。
 - 查看参数、Payload、Headers 和响应正文。
 - 一键复制 URL 或 cURL。
-- 导出当前筛选结果，授权头、Cookie 和 API Key 默认脱敏。
+- 导出当前筛选结果，授权头、Cookie、URL/参数/JSON 中的 API Key 等敏感值默认脱敏。
 - 暂停捕获、清空请求、刷新后保留日志。
 - 跟随系统浅色/深色主题，适配窄尺寸 DevTools。
 

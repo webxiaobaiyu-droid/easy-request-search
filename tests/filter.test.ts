@@ -173,6 +173,15 @@ describe('request filters', () => {
     expect(matchesCondition(request, { id: '1', field: 'paramKey', operator: 'notEquals', value: 'missing' })).toBe(true)
     expect(matchesCondition(request, { id: '1', field: 'paramKey', operator: 'notEquals', value: 'order.sku' })).toBe(false)
   })
+
+  it('equals on composite fields compares each entry, not the joined block', () => {
+    expect(matchesCondition(request, { id: '1', field: 'query', operator: 'equals', value: 'page=2' })).toBe(true)
+    expect(matchesCondition(request, { id: '2', field: 'param', operator: 'equals', value: 'quantity=3' })).toBe(true)
+    expect(matchesCondition(request, { id: '3', field: 'param', operator: 'equals', value: '3107' })).toBe(false)
+    expect(matchesCondition(request, { id: '4', field: 'header', operator: 'equals', value: 'x-trace-id:trace-9' })).toBe(true)
+    expect(matchesCondition(request, { id: '5', field: 'header', operator: 'notEquals', value: 'x-trace-id:trace-9' })).toBe(false)
+    expect(matchesCondition(request, { id: '6', field: 'param', operator: 'notEquals', value: 'page=2' })).toBe(false)
+  })
 })
 
 describe('response body search', () => {
@@ -230,10 +239,26 @@ describe('failed status group', () => {
     expect(filterRequests([failed, request, plain], filter)).toHaveLength(1)
   })
 
-  it('failed group excludes pending and successful requests', () => {
+  it('failed group excludes successful requests', () => {
     const filter = baseFilter()
     filter.statusGroup = 'failed'
     expect(filterRequests([request], filter)).toHaveLength(0)
+  })
+
+  it('failed group includes zero-status (no response) requests', () => {
+    const filter = baseFilter()
+    filter.statusGroup = 'failed'
+    const zero = normalizeHarEntry(
+      {
+        startedDateTime: '2026-08-21T10:05:00.001Z',
+        time: 30,
+        _resourceType: 'xhr',
+        request: { method: 'GET', url: 'https://api.test/canceled' },
+        response: { status: 0, statusText: '', _error: 'net::ERR_ABORTED' },
+      },
+      11,
+    )
+    expect(filterRequests([zero, failed, request, plain], filter)).toHaveLength(2)
   })
 })
 
@@ -262,8 +287,16 @@ describe('batch search', () => {
   it('parses multi-line input into a deduped keyword list', async () => {
     const { parseBatchKeywords } = await import('../src/core/filter')
     expect(parseBatchKeywords('orders\n  users \norders\n\n')).toEqual(['orders', 'users'])
-    expect(parseBatchKeywords('orders users')).toBeNull()
+    expect(parseBatchKeywords('orders users')).toEqual(['orders users'])
+    expect(parseBatchKeywords('')).toBeNull()
     expect(parseBatchKeywords('\n\n')).toBeNull()
+  })
+
+  it('single-line batchSearch input is still batch semantics', async () => {
+    const { parseBatchKeywords } = await import('../src/core/filter')
+    const filter = { ...baseFilter(), batchSearch: 'ORD-1' }
+    expect(parseBatchKeywords(filter.batchSearch ?? '')).toEqual(['ORD-1'])
+    expect(filterRequests([orders, users, plain], filter)).toHaveLength(1)
   })
 
   it('keeps a request when ANY batch keyword matches (OR semantics)', () => {
@@ -314,6 +347,75 @@ describe('batch search via filter state', () => {
   })
 })
 
+describe('field tokens vs same-named parameters', () => {
+  const statusParam = normalizeHarEntry(
+    {
+      startedDateTime: '2026-08-21T10:10:00.000Z',
+      time: 20,
+      _resourceType: 'fetch',
+      request: { method: 'GET', url: 'https://api.test/orders?status=failed&state=done' },
+      response: { status: 204, statusText: 'No Content' },
+    },
+    21,
+  )
+  const methodParam = normalizeHarEntry(
+    {
+      startedDateTime: '2026-08-21T10:11:00.000Z',
+      time: 20,
+      _resourceType: 'xhr',
+      request: { method: 'GET', url: 'https://api.test/run?method=POST' },
+      response: { status: 200, statusText: 'OK' },
+    },
+    22,
+  )
+
+  it('status:failed finds a request whose status query param is failed', () => {
+    const filter = baseFilter()
+    filter.search = 'status:failed'
+    expect(filterRequests([statusParam, plain], filter)).toHaveLength(1)
+  })
+
+  it('status:ok still matches HTTP semantics, not only the param', () => {
+    const filter = baseFilter()
+    filter.search = 'status:ok'
+    expect(filterRequests([statusParam, plain], filter)).toHaveLength(2)
+  })
+
+  it('method:POST finds a GET request with a method query param', () => {
+    const filter = baseFilter()
+    filter.search = 'method:POST'
+    expect(filterRequests([methodParam, plain], filter)).toHaveLength(1)
+  })
+
+  it('does not match unrelated parameters', () => {
+    const filter = baseFilter()
+    filter.search = 'status:failed'
+    expect(filterRequests([plain], filter)).toHaveLength(0)
+  })
+})
+
+describe('search token parsing', () => {
+  it('binds the token after a spaced alias, quoted or bare', () => {
+    const withKey = baseFilter()
+    withKey.search = 'status: 404'
+    expect(filterRequests([request, quoted], withKey)).toHaveLength(0)
+
+    const status404 = normalizeHarEntry(
+      {
+        startedDateTime: '2026-08-21T10:12:00.000Z',
+        time: 20,
+        _resourceType: 'fetch',
+        request: { method: 'GET', url: 'https://api.test/missing' },
+        response: { status: 404, statusText: 'Not Found' },
+      },
+      23,
+    )
+    const spaced = baseFilter()
+    spaced.search = 'url: api.test/missing'
+    expect(filterRequests([status404, plain], spaced)).toHaveLength(1)
+  })
+})
+
 describe('status semantic keywords', () => {
   const make = (sequence: number, status: number) =>
     normalizeHarEntry(
@@ -327,7 +429,7 @@ describe('status semantic keywords', () => {
       sequence,
     )
   const statuses = [
-    make(1, 0),    // pending → running
+    make(1, 0),    // 0 = no HTTP status: aborted/failed, never in flight
     make(2, -1),   // failed
     make(3, 204),  // 2xx
     make(4, 302),  // 3xx
@@ -341,10 +443,12 @@ describe('status semantic keywords', () => {
   }
 
   it('maps semantic words onto status classes', () => {
-    expect(searchAs('status:running')).toEqual([0])
-    expect(searchAs('status:pending')).toEqual([0])
-    expect(searchAs('status:failed')).toEqual([-1])
-    expect(searchAs('status:error')).toEqual([-1])
+    // running/pending were dropped: onRequestFinished never delivers in-flight requests.
+    expect(searchAs('status:running')).toEqual([])
+    expect(searchAs('status:pending')).toEqual([])
+    expect(searchAs('status:failed')).toEqual([0, -1])
+    expect(searchAs('status:error')).toEqual([0, -1])
+    expect(searchAs('status:取消')).toEqual([0, -1])
     expect(searchAs('status:ok')).toEqual([204])
     expect(searchAs('status:success')).toEqual([204])
     expect(searchAs('status:redirect')).toEqual([302])
@@ -352,8 +456,8 @@ describe('status semantic keywords', () => {
     expect(searchAs('status:client')).toEqual([404])
     expect(searchAs('status:server')).toEqual([500])
     expect(searchAs('status:5xx')).toEqual([500])
-    expect(searchAs('status:失败')).toEqual([-1])
-    expect(searchAs('status:进行中')).toEqual([0])
+    expect(searchAs('status:失败')).toEqual([0, -1])
+    expect(searchAs('status:进行中')).toEqual([])
   })
 
   it('keeps numeric status matching intact', () => {

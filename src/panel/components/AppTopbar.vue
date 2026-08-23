@@ -137,7 +137,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeyboard))
           rows="7"
           spellcheck="false"
           :placeholder="t('batchTextareaPlaceholder')"
-          aria-label="批量搜索关键词"
+          :aria-label="t('batchAria')"
         ></textarea>
         <div class="batch-actions">
           <button v-if="batchKeywords.length" type="button" class="batch-clear" @click="filter.batchSearch = ''">

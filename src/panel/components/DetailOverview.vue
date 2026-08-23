@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CapturedRequest } from '../../types/network'
 import { t } from '../i18n'
-import { formatClock, formatDuration, formatSize } from '../utils/format'
+import { formatClock, formatDuration, formatSize, statusDetail } from '../utils/format'
 import HighlightText from './HighlightText.vue'
 
 defineProps<{ request: CapturedRequest; keywords?: string[] }>()
@@ -12,7 +12,7 @@ defineEmits<{ 'goto-tab': [tab: 'params'] }>()
 <template>
   <div class="overview-view">
     <dl class="overview-grid">
-      <div><dt>{{ t('overviewStatus') }}</dt><dd>{{ request.status }} {{ request.statusText }}</dd></div>
+      <div><dt>{{ t('overviewStatus') }}</dt><dd>{{ statusDetail(request) }}</dd></div>
       <div><dt>{{ t('overviewType') }}</dt><dd>{{ request.resourceType }}</dd></div>
       <div><dt>{{ t('overviewDuration') }}</dt><dd>{{ formatDuration(request.duration) }}</dd></div>
       <div><dt>{{ t('overviewSize') }}</dt><dd>{{ formatSize(request.size) }}</dd></div>

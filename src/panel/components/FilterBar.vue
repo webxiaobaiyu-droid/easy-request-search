@@ -51,12 +51,12 @@ function removeCondition(id: string): void {
     <div class="advanced-panel">
       <div class="preset-row">
         <span class="preset-label">{{ t('presetLabel') }}</span>
-        <select v-model="selectedPreset" aria-label="筛选预设" @change="applySelectedPreset">
+        <select v-model="selectedPreset" :aria-label="t('presetSelectAria')" @change="applySelectedPreset">
           <option value="">{{ t('presetChoose') }}</option>
           <option v-for="preset in presets" :key="preset.name" :value="preset.name">{{ preset.name }}</option>
         </select>
         <button class="preset-action" type="button" :disabled="!selectedPreset" @click="removeSelectedPreset">{{ t('presetDelete') }}</button>
-        <input v-model="presetName" type="text" :placeholder="t('presetNamePlaceholder')" aria-label="预设名称" @keydown.enter="persistCurrentPreset" />
+        <input v-model="presetName" type="text" :placeholder="t('presetNamePlaceholder')" :aria-label="t('presetNameAria')" @keydown.enter="persistCurrentPreset" />
         <button class="preset-action" type="button" :disabled="!presetName.trim()" @click="persistCurrentPreset">
           {{ t('presetSaveCurrent') }}
         </button>
