@@ -174,6 +174,7 @@
   .ktag {
     flex: 0 0 auto; padding: 0 6px; line-height: 16px;
     font-size: 9.5px; border-radius: 8px; border: 1px solid;
+    white-space: nowrap;
     animation: tag-in .5s ease both;
   }
   @keyframes tag-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
@@ -293,23 +294,25 @@
   .demo-search .typed { color: var(--ink); overflow: hidden; white-space: nowrap; }
   .demo-search .typed.t15 { animation: typing-15 8s steps(15) infinite; }
   .demo-search .typed.t20 { animation: typing-20 8s steps(20) infinite; }
-  @keyframes typing-15 { 0% { width: 0; } 38% { width: 15ch; } 88% { width: 15ch; } 100% { width: 0; } }
+  @keyframes typing-15 { 0% { width: 0; } 38% { width: 13ch; } 88% { width: 13ch; } 100% { width: 0; } }
   @keyframes typing-20 { 0% { width: 0; } 38% { width: 20ch; } 88% { width: 20ch; } 100% { width: 0; } }
-  .demo-row {
+  /* rows inside the live demo cards; keep them out of the bento batch card,
+     whose .demo-row is a flex row of method + name + keyword tags */
+  .demo-panel .demo-row {
     display: grid; grid-template-columns: 42px minmax(0, 1fr) 46px; gap: 8px; align-items: center;
     height: 27px; padding: 0 10px; position: relative;
     font-family: var(--mono); font-size: 11px; color: var(--muted);
     border-bottom: 1px solid var(--line-soft);
   }
-  .demo-row:last-child { border-bottom: 0; }
-  .demo-row .nm { color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  .demo-row .st { text-align: right; }
+  .demo-panel .demo-row:last-child { border-bottom: 0; }
+  .demo-panel .demo-row .nm { color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .demo-panel .demo-row .st { text-align: right; }
   .st-pend { color: var(--faint); } .st-fail { color: var(--batch-4); font-weight: 700; } .st-ok { color: var(--muted); }
-  .demo-row .ktag {
+  .demo-panel .demo-row .ktag {
     padding: 0 6px; margin-left: 8px; line-height: 16px; font-size: 9.5px;
     border: 1px solid; border-radius: 8px;
   }
-  /* demo 1: after typing, non-matching rows dim, the pending row lights up */
+  /* demo 1: after typing, non-matching rows dim, the failed row lights up */
   .fx-dim   { animation: dim-8 8s infinite; }
   .fx-light { animation: light-8 8s infinite; }
   @keyframes dim-8   { 0%, 36% { opacity: 1; } 46%, 86% { opacity: .18; } 96%, 100% { opacity: 1; } }
@@ -464,7 +467,7 @@
   <div class="wrap">
     <div class="stats rv">
       <div class="stat"><b>50<em> 个</em> ID</b><span>一次粘贴批量核对，命中逐词配色、未命中置灰</span></div>
-      <div class="stat"><b>5000<em> 条</em></b><span>环形缓冲 + 虚拟滚动，压测页面依旧丝滑</span></div>
+      <div class="stat"><b>1200<em> 条</em></b><span>环形缓冲 + 虚拟滚动，压测页面依旧丝滑</span></div>
       <div class="stat"><b>3<em> 种</em> 复制</b><span>cURL / fetch / Node axios，联调复现零成本</span></div>
     </div>
   </div>
@@ -552,10 +555,10 @@ pnpm install <span class="a">&&</span> pnpm build</pre>
         <thead><tr><th>语法</th><th>含义</th><th>示例</th></tr></thead>
         <tbody>
           <tr><td>关键词…</td><td>任意字段全文匹配（含已加载响应），多词 AND</td><td>orders 3107</td></tr>
-          <tr><td>字段:值</td><td>限定字段 url / method / type / status / mime / key / value / query / body / header / response</td><td>response:tenantId</td></tr>
-          <tr><td>status:语义词</td><td>按状态类搜：running / pending（进行中）· failed / error（失败）· ok / success · redirect · bad / client（4xx）· server（5xx）· 4xx / 5xx，中文同样支持</td><td>status:running</td></tr>
+          <tr><td>字段:值</td><td>限定字段 url / method / type / status / mime / key / value / query / body / header / response；字段名同时命中同名参数（?status=failed 可被 status:failed 命中），冒号后可带空格</td><td>response:tenantId</td></tr>
+          <tr><td>status:语义词</td><td>按状态类搜：failed / error（失败，含取消）· ok / success · redirect · bad / client（4xx）· server（5xx）· 4xx / 5xx，中文同样支持</td><td>status:failed</td></tr>
           <tr><td>"短语"</td><td>引号包裹精确短语</td><td>key:"user id"</td></tr>
-          <tr><td>批量输入</td><td>多行关键词 OR 匹配，逐词配色标识</td><td>ORD-1001 ↵ ORD-1002</td></tr>
+          <tr><td>批量输入</td><td>每行一个关键词 OR 匹配，逐词配色标识，单行也生效</td><td>ORD-1001 ↵ ORD-1002</td></tr>
           <tr><td><kbd>/</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Esc</kbd></td><td>聚焦搜索 / 切换请求 / 清空筛选</td><td>—</td></tr>
         </tbody>
       </table>
@@ -565,12 +568,12 @@ pnpm install <span class="a">&&</span> pnpm build</pre>
       <div class="demo-card">
         <div class="demo-label">Live Demo · 语义状态搜索</div>
         <div class="demo-panel">
-          <div class="demo-search">⌕ <span class="typed t15">status:running</span><span class="caret"></span></div>
+          <div class="demo-search">⌕ <span class="typed t15">status:failed</span><span class="caret"></span></div>
           <div class="demo-row fx-dim"><span>GET</span><span class="nm">dashboard.css</span><span class="st st-ok">200</span></div>
-          <div class="demo-row fx-light"><span>GET</span><span class="nm">orders-sync</span><span class="st st-pend">···</span></div>
-          <div class="demo-row fx-dim"><span>GET</span><span class="nm">ping</span><span class="st st-fail">失败</span></div>
+          <div class="demo-row fx-dim"><span>GET</span><span class="nm">orders-sync</span><span class="st st-fail">失败</span></div>
+          <div class="demo-row fx-light"><span>GET</span><span class="nm">ping</span><span class="st st-fail">失败</span></div>
         </div>
-        <p class="demo-note">输入 <code>status:running</code> 后只剩进行中的请求；同理 <code>status:failed</code>、<code>status:ok</code>、<code>status:5xx</code>，中文「失败 / 进行中 / 成功」也可以。</p>
+        <p class="demo-note">输入 <code>status:failed</code> 后只剩失败/取消的请求（status 0 与 net::ERR 都归入）；同理 <code>status:ok</code>、<code>status:5xx</code>，中文「失败 / 成功」也可以。</p>
       </div>
       <div class="demo-card">
         <div class="demo-label">Live Demo · 批量搜索配色</div>
