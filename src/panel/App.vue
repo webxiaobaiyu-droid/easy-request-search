@@ -149,6 +149,7 @@ const typeOptions = computed(() => {
 const activeFilterCount = computed(
   () =>
     Number(Boolean(filter.search.trim())) +
+    Number(Boolean((filter.batchSearch ?? '').trim())) +
     filter.methods.length +
     filter.resourceTypes.length +
     Number(filter.statusGroup !== 'all') +

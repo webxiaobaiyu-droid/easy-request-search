@@ -29,6 +29,27 @@ function parameterText(request: CapturedRequest, source?: 'query' | 'body'): str
     .join('\n')
 }
 
+/** Human-readable labels per status class, searchable via `status:word`. Labels avoid substring overlaps. */
+function statusLabels(status: number): string[] {
+  if (status < 0) return ['failed', '失败', 'error', '错误']
+  if (status === 0) return ['running', 'pending', '进行中']
+  const hundred = Math.floor(status / 100) * 100
+  switch (hundred) {
+    case 100:
+      return ['1xx', 'info', '信息']
+    case 200:
+      return ['ok', 'success', '成功', '2xx']
+    case 300:
+      return ['redirect', '重定向', '3xx']
+    case 400:
+      return ['bad', 'client', '客户端错误', '4xx']
+    case 500:
+      return ['server', '服务器错误', '5xx']
+    default:
+      return []
+  }
+}
+
 function valuesForField(request: CapturedRequest, field: FilterField): string[] {
   switch (field) {
     case 'url':
@@ -38,7 +59,7 @@ function valuesForField(request: CapturedRequest, field: FilterField): string[] 
     case 'type':
       return [formatResourceType(request.resourceType, request.mimeType)]
     case 'status':
-      return [String(request.status)]
+      return [String(request.status), ...statusLabels(request.status)]
     case 'mime':
       return [request.mimeType]
     case 'param': {
