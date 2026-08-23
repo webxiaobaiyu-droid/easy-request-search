@@ -313,3 +313,57 @@ describe('batch search via filter state', () => {
     expect(filterRequests([order], filter)).toHaveLength(0)
   })
 })
+
+describe('status semantic keywords', () => {
+  const make = (sequence: number, status: number) =>
+    normalizeHarEntry(
+      {
+        startedDateTime: `2026-08-21T10:${String(10 + sequence).padStart(2, '0')}:00.000Z`,
+        time: 20,
+        _resourceType: 'fetch',
+        request: { method: 'GET', url: `https://api.test/r${sequence}` },
+        response: { status, statusText: status < 0 ? 'net::ERR_FAILED' : '' },
+      },
+      sequence,
+    )
+  const statuses = [
+    make(1, 0),    // pending → running
+    make(2, -1),   // failed
+    make(3, 204),  // 2xx
+    make(4, 302),  // 3xx
+    make(5, 404),  // 4xx
+    make(6, 500),  // 5xx
+  ]
+  const searchAs = (term: string) => {
+    const filter = baseFilter()
+    filter.search = term
+    return filterRequests(statuses, filter).map((request) => request.status)
+  }
+
+  it('maps semantic words onto status classes', () => {
+    expect(searchAs('status:running')).toEqual([0])
+    expect(searchAs('status:pending')).toEqual([0])
+    expect(searchAs('status:failed')).toEqual([-1])
+    expect(searchAs('status:error')).toEqual([-1])
+    expect(searchAs('status:ok')).toEqual([204])
+    expect(searchAs('status:success')).toEqual([204])
+    expect(searchAs('status:redirect')).toEqual([302])
+    expect(searchAs('status:bad')).toEqual([404])
+    expect(searchAs('status:client')).toEqual([404])
+    expect(searchAs('status:server')).toEqual([500])
+    expect(searchAs('status:5xx')).toEqual([500])
+    expect(searchAs('status:失败')).toEqual([-1])
+    expect(searchAs('status:进行中')).toEqual([0])
+  })
+
+  it('keeps numeric status matching intact', () => {
+    expect(searchAs('status:404')).toEqual([404])
+    expect(searchAs('status:40')).toEqual([404])
+  })
+
+  it('free text does not pick up semantic labels', () => {
+    const filter = baseFilter()
+    filter.search = 'running'
+    expect(filterRequests(statuses, filter)).toHaveLength(0)
+  })
+})
